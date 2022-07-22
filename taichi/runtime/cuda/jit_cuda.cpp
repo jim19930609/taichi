@@ -191,14 +191,6 @@ std::string JITSessionCUDA::compile_module_to_ptx(
   // Override default to generate verbose assembly.
   target_machine->Options.MCOptions.AsmVerbose = true;
 
-  // Output string stream
-
-  // Ask the target to add backend passes as necessary.
-  bool fail = target_machine->addPassesToEmitFile(
-      module_pass_manager, ostream, nullptr, llvm::CGFT_AssemblyFile, true);
-
-  TI_ERROR_IF(fail, "Failed to set up passes to emit PTX source\n");
-
   {
     TI_PROFILER("llvm_function_pass");
     function_pass_manager.doInitialization();
@@ -208,6 +200,16 @@ std::string JITSessionCUDA::compile_module_to_ptx(
     function_pass_manager.doFinalization();
   }
 
+  module_pass_manager.add(llvm::createLoopStrengthReducePass());
+  module_pass_manager.add(llvm::createIndVarSimplifyPass());
+  module_pass_manager.add(llvm::createSeparateConstOffsetFromGEPPass(false));
+  module_pass_manager.add(llvm::createEarlyCSEPass(true));
+
+  // Ask the target to add backend passes as necessary.
+  bool fail = target_machine->addPassesToEmitFile(
+      module_pass_manager, ostream, nullptr, llvm::CGFT_AssemblyFile, true);
+
+  TI_ERROR_IF(fail, "Failed to set up passes to emit PTX source\n");
   {
     TI_PROFILER("llvm_module_pass");
     module_pass_manager.run(*module);
