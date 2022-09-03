@@ -261,9 +261,6 @@ class HostDeviceContextBlitter {
 
 }  // namespace
 
-constexpr size_t kGtmpBufferSize = 1024 * 1024;
-constexpr size_t kListGenBufferSize = 32 << 20;
-
 // Info for launching a compiled Taichi kernel, which consists of a series of
 // Unified Device API pipelines.
 
@@ -646,24 +643,9 @@ void GfxRuntime::submit_current_cmdlist_if_timeout() {
 }
 
 void GfxRuntime::init_nonroot_buffers() {
-  global_tmps_buffer_ = device_->allocate_memory_unique(
-      {kGtmpBufferSize,
-       /*host_write=*/false, /*host_read=*/false,
-       /*export_sharing=*/false, AllocUsage::Storage});
-
-  listgen_buffer_ = device_->allocate_memory_unique(
-      {kListGenBufferSize,
-       /*host_write=*/false, /*host_read=*/false,
-       /*export_sharing=*/false, AllocUsage::Storage});
-
   // Need to zero fill the buffers, otherwise there could be NaN.
   Stream *stream = device_->get_compute_stream();
   auto cmdlist = stream->new_command_list();
-
-  cmdlist->buffer_fill(global_tmps_buffer_->get_ptr(0), kBufferSizeEntireSize,
-                       /*data=*/0);
-  cmdlist->buffer_fill(listgen_buffer_->get_ptr(0), kBufferSizeEntireSize,
-                       /*data=*/0);
 
   stream->submit_synced(cmdlist.get());
 }

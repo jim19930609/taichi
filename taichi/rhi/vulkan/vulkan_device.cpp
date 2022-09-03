@@ -782,9 +782,7 @@ VulkanCommandList::VulkanCommandList(VulkanDevice *ti_device,
   info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
   vkBeginCommandBuffer(buffer->buffer, &info);
-  vkCmdResetQueryPool(buffer->buffer, query_pool_->query_pool, 0, 2);
-  vkCmdWriteTimestamp(buffer->buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                      query_pool_->query_pool, 0);
+  // vkCmdResetQueryPool(buffer->buffer, query_pool_->query_pool, 0, 2);
 }
 
 VulkanCommandList::~VulkanCommandList() {
@@ -1304,8 +1302,6 @@ vkapi::IVkRenderPass VulkanCommandList::current_renderpass() {
 
 vkapi::IVkCommandBuffer VulkanCommandList::finalize() {
   if (!finalized_) {
-    vkCmdWriteTimestamp(buffer_->buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                        query_pool_->query_pool, 1);
     vkEndCommandBuffer(buffer_->buffer);
     finalized_ = true;
   }
@@ -1643,61 +1639,17 @@ StreamSemaphore VulkanStream::submit(
     const std::vector<StreamSemaphore> &wait_semaphores) {
   VulkanCommandList *cmdlist = static_cast<VulkanCommandList *>(cmdlist_);
   vkapi::IVkCommandBuffer buffer = cmdlist->finalize();
-  vkapi::IVkQueryPool query_pool = cmdlist->vk_query_pool();
-
-  /*
-  if (in_flight_cmdlists_.find(buffer) != in_flight_cmdlists_.end()) {
-    TI_ERROR("Can not submit command list that is still in-flight");
-    return;
-  }
-  */
 
   VkSubmitInfo submit_info{};
   submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
   submit_info.commandBufferCount = 1;
   submit_info.pCommandBuffers = &buffer->buffer;
 
-  std::vector<VkSemaphore> vk_wait_semaphores;
-  std::vector<VkPipelineStageFlags> vk_wait_stages;
-
-  for (const StreamSemaphore &sema_ : wait_semaphores) {
-    auto sema = std::static_pointer_cast<VulkanStreamSemaphoreObject>(sema_);
-    vk_wait_semaphores.push_back(sema->vkapi_ref->semaphore);
-    vk_wait_stages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
-    buffer->refs.push_back(sema->vkapi_ref);
-  }
-
-  submit_info.pWaitSemaphores = vk_wait_semaphores.data();
-  submit_info.waitSemaphoreCount = vk_wait_semaphores.size();
-  submit_info.pWaitDstStageMask = vk_wait_stages.data();
-
-  auto semaphore = vkapi::create_semaphore(buffer->device, 0);
-  buffer->refs.push_back(semaphore);
-
-  submit_info.signalSemaphoreCount = 1;
-  submit_info.pSignalSemaphores = &semaphore->semaphore;
-
-  auto fence = vkapi::create_fence(buffer->device, 0);
-
-  // Resource tracking, check previously submitted commands
-  // FIXME: Figure out why it doesn't work
-  /*
-  std::remove_if(submitted_cmdbuffers_.begin(), submitted_cmdbuffers_.end(),
-                 [&](const TrackedCmdbuf &tracked) {
-                   // If fence is signaled, cmdbuf has completed
-                   VkResult res =
-                       vkGetFenceStatus(buffer->device, tracked.fence->fence);
-                   return res == VK_SUCCESS;
-    });
-  */
-
-  submitted_cmdbuffers_.push_back(TrackedCmdbuf{fence, buffer, query_pool});
-
   BAIL_ON_VK_BAD_RESULT(vkQueueSubmit(queue_, /*submitCount=*/1, &submit_info,
-                                      /*fence=*/fence->fence),
+                                      /*fence=*/nullptr),
                         "failed to submit command buffer");
 
-  return std::make_shared<VulkanStreamSemaphoreObject>(semaphore);
+  return std::make_shared<VulkanStreamSemaphoreObject>(nullptr);
 }
 
 StreamSemaphore VulkanStream::submit_synced(
