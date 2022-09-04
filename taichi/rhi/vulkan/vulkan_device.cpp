@@ -773,7 +773,6 @@ VulkanCommandList::VulkanCommandList(VulkanDevice *ti_device,
     : ti_device_(ti_device),
       stream_(stream),
       device_(ti_device->vk_device()),
-      query_pool_(vkapi::create_query_pool(ti_device->vk_device())),
       buffer_(buffer) {
   VkCommandBufferBeginInfo info{};
   info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -782,9 +781,6 @@ VulkanCommandList::VulkanCommandList(VulkanDevice *ti_device,
   info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
   vkBeginCommandBuffer(buffer->buffer, &info);
-  // vkCmdResetQueryPool(buffer->buffer, query_pool_->query_pool, 0, 2);
-  // vkCmdWriteTimestamp(buffer->buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-  //                     query_pool_->query_pool, 0);
 }
 
 VulkanCommandList::~VulkanCommandList() {
@@ -975,10 +971,6 @@ void VulkanCommandList::dispatch(uint32_t x, uint32_t y, uint32_t z) {
 
 vkapi::IVkCommandBuffer VulkanCommandList::vk_command_buffer() {
   return buffer_;
-}
-
-vkapi::IVkQueryPool VulkanCommandList::vk_query_pool() {
-  return query_pool_;
 }
 
 void VulkanCommandList::begin_renderpass(int x0,
@@ -1304,8 +1296,6 @@ vkapi::IVkRenderPass VulkanCommandList::current_renderpass() {
 
 vkapi::IVkCommandBuffer VulkanCommandList::finalize() {
   if (!finalized_) {
-    // vkCmdWriteTimestamp(buffer_->buffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-    //                     query_pool_->query_pool, 1);
     vkEndCommandBuffer(buffer_->buffer);
     finalized_ = true;
   }

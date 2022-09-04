@@ -435,14 +435,12 @@ class VulkanCommandList : public CommandList {
   vkapi::IVkCommandBuffer finalize();
 
   vkapi::IVkCommandBuffer vk_command_buffer();
-  vkapi::IVkQueryPool vk_query_pool();
 
  private:
   bool finalized_{false};
   VulkanDevice *ti_device_;
   VulkanStream *stream_;
   VkDevice device_;
-  vkapi::IVkQueryPool query_pool_;
   vkapi::IVkCommandBuffer buffer_;
   VulkanPipeline *current_pipeline_{nullptr};
 
