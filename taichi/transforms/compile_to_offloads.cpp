@@ -68,10 +68,21 @@ void compile_to_offloads(IRNode *ir,
   }
 
   // Removes MatrixOfMatrixPtrStmt & MatrixOfGlobalPtrStmt
-  irpass::lower_matrix_ptr(ir);
+  irpass::lower_matrix_ptr(ir, config);
   print("Matrix ptr lowered");
 
-  irpass::full_simplify(
+  if (config.pre_scalarize) {
+    if (irpass::scalarize(ir, false)) {
+      print("Scalarized Pre");
+      // Remove redundant MatrixInitStmt inserted during scalarization
+      irpass::full_simplify1(
+          ir, config,
+          {false, /*autodiff_enabled*/ false, kernel->get_name(), verbose});
+      print("Scalarized");
+    }
+  }
+
+  irpass::full_simplify2(
       ir, config,
       {false, /*autodiff_enabled*/ autodiff_mode != AutodiffMode::kNone,
        kernel->get_name(), verbose});
@@ -100,12 +111,12 @@ void compile_to_offloads(IRNode *ir,
     // Remove local atomics here so that we don't have to handle their gradients
     irpass::demote_atomics(ir, config);
 
-    irpass::full_simplify(
+    irpass::full_simplify3(
         ir, config,
         {false, /*autodiff_enabled*/ true, kernel->get_name(), verbose});
     irpass::auto_diff(ir, config, autodiff_mode, ad_use_stack);
     // TODO: Be carefull with the full_simplify when do high-order autodiff
-    irpass::full_simplify(
+    irpass::full_simplify3(
         ir, config,
         {false, /*autodiff_enabled*/ false, kernel->get_name(), verbose});
     print("Gradient");
@@ -122,7 +133,7 @@ void compile_to_offloads(IRNode *ir,
   print("Access flagged I");
   irpass::analysis::verify(ir);
 
-  irpass::full_simplify(
+  irpass::full_simplify4(
       ir, config,
       {false, /*autodiff_enabled*/ false, kernel->get_name(), verbose});
   print("Simplified II");
@@ -144,7 +155,7 @@ void compile_to_offloads(IRNode *ir,
   irpass::flag_access(ir);
   print("Access flagged II");
 
-  irpass::full_simplify(
+  irpass::full_simplify5(
       ir, config,
       {false, /*autodiff_enabled*/ false, kernel->get_name(), verbose});
   print("Simplified III");
@@ -220,7 +231,7 @@ void offload_to_executable(IRNode *ir,
     if (config.make_mesh_block_local && config.arch == Arch::cuda) {
       irpass::make_mesh_block_local(ir, config, {kernel->get_name()});
       print("Make mesh block local");
-      irpass::full_simplify(
+      irpass::full_simplify6(
           ir, config,
           {false, /*autodiff_enabled*/ false, kernel->get_name(), verbose});
       print("Simplified X");
@@ -254,7 +265,7 @@ void offload_to_executable(IRNode *ir,
   irpass::analysis::verify(ir);
 
   if (lower_global_access) {
-    irpass::full_simplify(
+    irpass::full_simplify7(
         ir, config,
         {false, /*autodiff_enabled*/ false, kernel->get_name(), verbose});
     print("Simplified before lower access");
@@ -274,9 +285,9 @@ void offload_to_executable(IRNode *ir,
   irpass::demote_operations(ir, config);
   print("Operations demoted");
 
-  irpass::full_simplify(ir, config,
-                        {lower_global_access, /*autodiff_enabled*/ false,
-                         kernel->get_name(), verbose});
+  irpass::full_simplify8(ir, config,
+                         {lower_global_access, /*autodiff_enabled*/ false,
+                          kernel->get_name(), verbose});
   print("Simplified IV");
 
   if (determine_ad_stack_size) {
@@ -295,7 +306,7 @@ void offload_to_executable(IRNode *ir,
   if (config.real_matrix_scalarize) {
     if (irpass::scalarize(ir, half2_optimization_enabled)) {
       // Remove redundant MatrixInitStmt inserted during scalarization
-      irpass::full_simplify(
+      irpass::full_simplify9(
           ir, config,
           {false, /*autodiff_enabled*/ false, kernel->get_name(), verbose});
       print("Scalarized");

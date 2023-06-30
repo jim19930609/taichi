@@ -50,7 +50,8 @@ TEST(Scalarize, ScalarizeGlobalStore) {
   block->push_back<GlobalStoreStmt>(dest_stmt, matrix_init_stmt);
 
   irpass::scalarize(block.get());
-  irpass::lower_matrix_ptr(block.get());
+  CompileConfig config;
+  irpass::lower_matrix_ptr(block.get(), config);
   irpass::die(block.get());
 
   EXPECT_EQ(block->size(), 2 /*const*/ + 1 /*argload*/ + 4 /*const*/ +
@@ -111,7 +112,8 @@ TEST(Scalarize, ScalarizeGlobalLoad) {
   block->push_back<GlobalStoreStmt>(src_stmt, load_stmt);
 
   irpass::scalarize(block.get());
-  irpass::lower_matrix_ptr(block.get());
+  CompileConfig config;
+  irpass::lower_matrix_ptr(block.get(), config);
   irpass::die(block.get());
 
   EXPECT_EQ(block->size(), 1 /*argload*/ + 4 /*const*/ + 4 /*external_ptr*/ +

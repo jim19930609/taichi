@@ -32,7 +32,7 @@ void re_id(IRNode *root);
 void flag_access(IRNode *root);
 void eliminate_immutable_local_vars(IRNode *root);
 bool scalarize(IRNode *root, bool half2_optimization_enabled = false);
-void lower_matrix_ptr(IRNode *root);
+void lower_matrix_ptr(IRNode *root, const CompileConfig &config);
 bool die(IRNode *root);
 bool simplify(IRNode *root, const CompileConfig &config);
 bool cfg_optimization(
@@ -54,6 +54,22 @@ bool cache_loop_invariant_global_vars(IRNode *root,
 void full_simplify(IRNode *root,
                    const CompileConfig &config,
                    const FullSimplifyPass::Args &args);
+
+#define FULL_SIMPLIFY(x)                                           \
+  void full_simplify##x(IRNode *root, const CompileConfig &config, \
+                        const FullSimplifyPass::Args &args);
+
+FULL_SIMPLIFY(1)
+FULL_SIMPLIFY(2)
+FULL_SIMPLIFY(3)
+FULL_SIMPLIFY(4)
+FULL_SIMPLIFY(5)
+FULL_SIMPLIFY(6)
+FULL_SIMPLIFY(7)
+FULL_SIMPLIFY(8)
+FULL_SIMPLIFY(9)
+FULL_SIMPLIFY(10)
+
 void print(IRNode *root, std::string *output = nullptr);
 std::function<void(const std::string &)>
 make_pass_printer(bool verbose, const std::string &kernel_name, IRNode *ir);

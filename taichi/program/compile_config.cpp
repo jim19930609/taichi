@@ -46,6 +46,8 @@ CompileConfig::CompileConfig() {
   half2_vectorization = false;
   make_cpu_multithreading_loop = true;
 
+  pre_scalarize = false;
+
   saturating_grid_dim = 0;
   max_block_dim = 0;
   cpu_max_num_threads = std::thread::hardware_concurrency();
